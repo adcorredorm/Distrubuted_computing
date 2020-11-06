@@ -51,25 +51,25 @@ func getBest(agents ...Agent) Agent {
 	return best
 }
 
-func chargeTest() {
-	file, err := os.Open("./setup/100.tsp")
-
+func chargeTest(fileName string) {
+	file, err := os.Open(fileName)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer file.Close()
+
 	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		indSize, err = strconv.Atoi(scanner.Text())
-		if err != nil {
-			log.Fatal(err)
-		}
-		break
+	scanner.Scan()
+	indSize, err = strconv.Atoi(scanner.Text())
+	if err != nil {
+		log.Fatal(err)
 	}
+
 	matrix = make([][]float64, indSize)
-	for i := 0; i < indSize; i++ {
+	for i := range matrix {
 		matrix[i] = make([]float64, indSize)
 	}
+
 	j := 0
 	for scanner.Scan() {
 		arr := strings.Fields(scanner.Text())
@@ -79,7 +79,6 @@ func chargeTest() {
 			if err != nil {
 				log.Fatal(err)
 			}
-
 			matrix[j][k] = temp
 		}
 		j++
@@ -87,8 +86,7 @@ func chargeTest() {
 }
 
 func main() {
-
-	chargeTest()
+	chargeTest("setup/14.tsp")
 	rand.Seed(time.Now().UnixNano())
 	population := initPopulation(testfunc)
 
