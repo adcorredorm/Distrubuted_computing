@@ -151,5 +151,5 @@ func main() {
 	//fmt.Printf("Best %d: ", i)
 	//getBest(population[:]...).PrintAgent()
 	elapsed := time.Since(start)
-	fmt.Printf("Time: %f\n", elapsed.Seconds())
+	fmt.Printf("%f\t", elapsed.Seconds())
 }
