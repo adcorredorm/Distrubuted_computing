@@ -1,1 +1,0 @@
-This code is only for compare with its pair implemented in C
