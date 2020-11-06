@@ -13,19 +13,19 @@ import (
 
 var indSize int
 
-const popSize = 20
-const generations = 50
+const popSize = 128
+const generations = 100
 
 var matrix [][]float64
+var threads int
 
-func testfunc(genome []int) float32 {
+func fitnessFunction(genome []int) float32 {
 	var rta float32 = 0.0
 
 	for i := 0; i < len(genome); i++ {
 		if i < len(genome)-1 {
 			rta += float32(matrix[genome[i]][genome[i+1]])
 		} else {
-
 			rta += float32(matrix[genome[i]][genome[0]])
 		}
 	}
@@ -85,33 +85,71 @@ func chargeTest(fileName string) {
 	}
 }
 
+func evaluateGen(population *[popSize]Agent, offspring *[popSize]Agent,
+	id int, rate float32, ch chan int) {
+
+	if rate < 0 || rate > 1 {
+		panic("Crossover rata must be in [0, 1]")
+	}
+
+	bash := int(popSize / threads)
+	init := id * bash
+	end := init + bash
+	if id == threads-1 {
+		end = popSize
+	}
+
+	for j := init; j < end; j++ {
+		if rand.Float32() < rate {
+			pair := rand.Intn(popSize)
+			n1, n2 := Crossover(&population[j], &population[pair])
+			Mutate(&n1)
+			Mutate(&n2)
+			n1.Evaluate(fitnessFunction)
+			n2.Evaluate(fitnessFunction)
+			offspring[j] = getBest(population[j], n1, n2)
+		} else {
+			offspring[j] = population[j]
+		}
+	}
+
+	ch <- 0
+}
+
 func main() {
-	chargeTest("setup/14.tsp")
+	start := time.Now()
+
+	th, err := strconv.Atoi(os.Args[1])
+	if err != nil || th < 1 {
+		panic("First argument must be an integer > 0")
+	}
+	threads = th
+	chargeTest(os.Args[2])
 	rand.Seed(time.Now().UnixNano())
-	population := initPopulation(testfunc)
+
+	population := initPopulation(fitnessFunction)
 
 	i := 0
 	var offspring [popSize]Agent
 	for i < generations {
-		fmt.Printf("Best %d: ", i)
-		getBest(population[:]...).PrintAgent()
-		for j := range population {
-			if rand.Float32() < 1 {
-				pair := rand.Intn(popSize)
-				n1, n2 := Crossover(&population[j], &population[pair])
-				n1.Evaluate(testfunc)
-				n2.Evaluate(testfunc)
-				best := getBest(n1, n2)
-				Mutate(&best)
-				best.Evaluate(testfunc)
-				offspring[j] = getBest(population[j], best)
-			} else {
-				offspring[j] = population[j]
-			}
+		//fmt.Printf("Best %d: ", i)
+		//getBest(population[:]...).PrintAgent()
+
+		ch := make(chan int, threads)
+
+		for j := 0; j < threads; j++ {
+			go evaluateGen(&population, &offspring, j, 0.7, ch)
 		}
+
+		for j := 0; j < threads; j++ {
+			<-ch
+		}
+
 		population = offspring
 		i++
 	}
-	fmt.Printf("Best %d: ", i)
-	getBest(population[:]...).PrintAgent()
+	//fmt.Printf("Best %d: ", i)
+	//getBest(population[:]...).PrintAgent()
+	elapsed := time.Since(start)
+	fmt.Printf("Time: %f\n", elapsed.Seconds())
 }
