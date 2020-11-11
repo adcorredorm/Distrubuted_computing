@@ -7,7 +7,7 @@
 
 using namespace std;
 
-const int numberNodes = 14;
+const int numberNodes = 666;
 
 struct Agent{
     int size;
@@ -211,15 +211,19 @@ extern "C" {
 
         struct Agent* DFPopulation;
         cudaMalloc((void**)&DFPopulation,DPopulationSize);
+        cudaMemcpy(DIPopulation,population,DPopulationSize,cudaMemcpyHostToDevice);
+
         for (int i = 0; i < generations;i++){
             float popResults[popSize];
             float mean = 0.0;
+            if(i%2==0){
+                EvaluateGen<<<256,int(popSize/256)+1>>>(DDistance, DIPopulation, DFPopulation, popSize, rate);
+                cudaMemcpy(population,DFPopulation,DPopulationSize,cudaMemcpyDeviceToHost);
+            }else{
+                EvaluateGen<<<256,int(popSize/256)+1>>>(DDistance, DFPopulation, DIPopulation, popSize, rate);
+                cudaMemcpy(population,DIPopulation,DPopulationSize,cudaMemcpyDeviceToHost);
+            }
 
-            cudaMemcpy(DIPopulation,population,DPopulationSize,cudaMemcpyHostToDevice);
-
-            EvaluateGen<<<256,int(popSize/256)+1>>>(DDistance, DIPopulation, DFPopulation, popSize, rate);
-
-            cudaMemcpy(population,DFPopulation,DPopulationSize,cudaMemcpyDeviceToHost);
 
             for (int j = 0; j< popSize;j++){
                 mean += population[j].fitness;

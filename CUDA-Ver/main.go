@@ -19,7 +19,7 @@ import "C"
 
 var indSize int
 
-const popSize = 1280
+const popSize = 1380
 const generations = 100
 
 var matrix [][]float64
@@ -88,12 +88,18 @@ func main() {
 
 	elapsed := time.Since(start)
 
+	fo, err := os.Create("output.txt")
+	if err != nil {
+		panic(err)
+	}
+	defer fo.Close()
+	fo.Write([]byte("\tbest\tworst\tmean\tmedian\tstDeviation"))
 	for i := 0; i < generations*5; i++ {
 		if i%5 == 0 {
-			fmt.Printf("\n")
+			fo.Write([]byte("\n"))
 		}
-		fmt.Printf("\t")
-		fmt.Print(results[i])
+		fo.Write([]byte("\t"))
+		fo.Write([]byte(fmt.Sprintf("%f", results[i])))
 	}
 	fmt.Printf("%f\t", elapsed.Seconds())
 }
