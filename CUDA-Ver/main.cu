@@ -7,7 +7,7 @@
 
 using namespace std;
 
-const int numberNodes = 666;
+const int numberNodes = 1002;
 
 struct Agent{
     int size;
@@ -73,36 +73,30 @@ __device__ void Mutate(struct Agent *agent, curandState state) {
     }
 }
 
-__device__ int Find(const int arr[], int e, unsigned int size){
-    for (int i = 0 ; i < size ;i++){
-        if (arr[i]== e){
-            return e;
-        }
-    }
-    return -1;
-}
-
 __device__ void CrossPermutation(int a[], int b[], curandState state){
     unsigned int crossPoint = curand(&state)%(numberNodes-2)+1;
-    unsigned int tempSize = numberNodes-crossPoint-1;
+    unsigned int tempSize = crossPoint+1;
     int tempA[numberNodes];
     int tempB[numberNodes];
-    int k = 0;
-    for (unsigned int i=crossPoint+1;i<numberNodes;i++){
-        tempA[k] = a[i];
-        tempB[k] = b[i];
-        k++;
+    for(int i = 0;i<numberNodes;i++){
+        tempA[i]=0;
+        tempB[i]=0;
     }
-    unsigned int idenA = crossPoint + 1;
-    unsigned int idenB = crossPoint + 1;
+
+    for(int i = tempSize;i<numberNodes;i++){
+        tempA[a[i]]=1;
+        tempB[b[i]]=1;
+    }
+    unsigned int idenA = tempSize;
+    unsigned int idenB = tempSize;
     for (int i = 0;i < numberNodes ; i++) {
-        if (Find(tempA, b[i], tempSize) != -1) {
+        if ( tempA[b[i]] ==1 ) {
             a[idenA] = b[i];
             idenA++;
         }
     }
     for (int i = 0;i < numberNodes ; i++) {
-        if (Find(tempB, a[i], tempSize) != -1) {
+        if ( tempB[a[i]] ==1 ) {
             b[idenB] = a[i];
             idenB++;
         }
@@ -150,10 +144,8 @@ __global__ void EvaluateGen(float *DDistance, struct Agent *DIPopulation, struct
             unsigned int pair =  curand(&state)%popSize;
             int n1[numberNodes];
             int n2[numberNodes];
-            for (int i=0;i<numberNodes;i++){
-                n1[i] = DIPopulation[pair].genome[i];
-                n2[i] = DIPopulation[tId].genome[i];
-            }
+            memcpy(n1,DIPopulation[pair].genome,sizeof(int)*numberNodes);
+            memcpy(n2,DIPopulation[tId].genome,sizeof(int)*numberNodes);
             CrossPermutation(n1,n2,state);
             struct Agent a1 = NewAgent(n1);
             struct Agent a2 = NewAgent(n2);
@@ -217,10 +209,10 @@ extern "C" {
             float popResults[popSize];
             float mean = 0.0;
             if(i%2==0){
-                EvaluateGen<<<256,int(popSize/256)+1>>>(DDistance, DIPopulation, DFPopulation, popSize, rate);
+                EvaluateGen<<<128,int(popSize/128)+1>>>(DDistance, DIPopulation, DFPopulation, popSize, rate);
                 cudaMemcpy(population,DFPopulation,DPopulationSize,cudaMemcpyDeviceToHost);
             }else{
-                EvaluateGen<<<256,int(popSize/256)+1>>>(DDistance, DFPopulation, DIPopulation, popSize, rate);
+                EvaluateGen<<<128,int(popSize/128)+1>>>(DDistance, DFPopulation, DIPopulation, popSize, rate);
                 cudaMemcpy(population,DIPopulation,DPopulationSize,cudaMemcpyDeviceToHost);
             }
 
@@ -228,6 +220,7 @@ extern "C" {
             for (int j = 0; j< popSize;j++){
                 mean += population[j].fitness;
                 popResults[j] = population[j].fitness;
+//                PrintAgent(population[j]);
             }
             mean /= popSize;
             CondensedResult(popResults,results,mean, popSize,i);

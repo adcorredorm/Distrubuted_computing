@@ -13,8 +13,8 @@ import (
 
 var indSize int
 
-const popSize = 128
-const generations = 100
+const popSize = 768
+const generations = 1000
 
 var matrix [][]float64
 var threads int
