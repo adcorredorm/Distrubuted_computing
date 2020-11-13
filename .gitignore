@@ -1,3 +1,5 @@
 main
 results/*
 CUDA-Ver/results/*
+CUDA-Ver/output.txt
+resultsEvolution/*
