@@ -19,11 +19,10 @@ import "C"
 
 var indSize int
 
-const popSize = 1500
-const generations = 1800
+var popSize int
+var generations int
 
 var matrix [][]float64
-var threads int
 
 //EvaluateGen takes parameters of go a put it on c function
 func EvaluateGen(distance []C.float, results []C.float, popSize int, generations int, rate float32) {
@@ -67,12 +66,19 @@ func chargeTest(fileName string) {
 func main() {
 	start := time.Now()
 
-	th, err := strconv.Atoi(os.Args[1])
-	if err != nil || th < 1 {
+	pS, err := strconv.Atoi(os.Args[1])
+	if err != nil || pS < 1 {
 		panic("First argument must be an integer > 0")
 	}
-	threads = th
-	chargeTest(os.Args[2])
+	popSize = pS
+
+	g, err := strconv.Atoi(os.Args[2])
+	if err != nil || g < 1 {
+		panic("Second argument must be an integer > 0")
+	}
+	generations = g
+
+	chargeTest(os.Args[3])
 
 	var position []C.float = make([]C.float, indSize*indSize)
 	for i := 0; i < indSize; i++ {
@@ -88,7 +94,7 @@ func main() {
 
 	elapsed := time.Since(start)
 
-	fo, err := os.Create("output.txt")
+	fo, err := os.Create(os.Args[1] + " " + os.Args[2] + " " + strconv.Itoa(indSize) + " " + os.Args[4] + ".txt")
 	if err != nil {
 		panic(err)
 	}

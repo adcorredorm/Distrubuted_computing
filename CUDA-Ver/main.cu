@@ -7,7 +7,7 @@
 
 using namespace std;
 
-const int numberNodes = 1002;
+const int numberNodes = 439;
 
 struct Agent{
     int size;
