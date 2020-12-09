@@ -183,9 +183,10 @@ func main() {
 
 	i := 0
 	var offspring [popSize]Agent
+	population[0].PrintAgent()
 	for i < generations {
-		fmt.Printf("Best %d: ", i)
-		getBest(population[:]...).PrintAgent()
+		// fmt.Printf("Best %d: ", i)
+		// getBest(population[:]...).PrintAgent()
 		// stats = append(stats, statitstics(population[:]...))
 
 		evaluateGen(&population, &offspring, 0.7)
@@ -194,8 +195,8 @@ func main() {
 		i++
 		comm.Barrier()
 	}
-	fmt.Printf("Best %d: ", i)
-	getBest(population[:]...).PrintAgent()
+	// fmt.Printf("Best %d: ", i)
+	// getBest(population[:]...).PrintAgent()
 	// stats = append(stats, statitstics(population[:]...))
 
 	elapsed := time.Since(start)
