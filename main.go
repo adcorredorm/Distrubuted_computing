@@ -129,9 +129,6 @@ func evaluateGen(population *[popSize]Agent, offspring *[popSize]Agent, rate flo
 		panic("Crossover rate must be in [0, 1]")
 	}
 
-	mpi.Start()
-	defer mpi.Stop()
-
 	id := mpi.WorldRank()
 
 	bash := int(popSize / mpi.WorldSize())
@@ -175,6 +172,9 @@ func main2() {
 	rand.Seed(time.Now().UnixNano())
 
 	population := initPopulation(fitnessFunction)
+
+	mpi.Start()
+	defer mpi.Stop()
 
 	i := 0
 	var offspring [popSize]Agent
