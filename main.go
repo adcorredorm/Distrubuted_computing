@@ -138,6 +138,8 @@ func evaluateGen(population *[popSize]Agent, offspring *[popSize]Agent, rate flo
 		end = popSize
 	}
 
+	fmt.Printf("Hello from %d \n", id)
+
 	for j := init; j < end; j++ {
 		if rand.Float32() < rate {
 			pair := rand.Intn(popSize)
