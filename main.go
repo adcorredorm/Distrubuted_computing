@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/cpmech/gosl/mpi"
 )
 
 var indSize int
@@ -121,14 +123,18 @@ func chargeTest(fileName string) {
 	}
 }
 
-func evaluateGen(population *[popSize]Agent, offspring *[popSize]Agent,
-	id int, rate float32, ch chan int) {
+func evaluateGen(population *[popSize]Agent, offspring *[popSize]Agent, rate float32) {
 
 	if rate < 0 || rate > 1 {
-		panic("Crossover rata must be in [0, 1]")
+		panic("Crossover rate must be in [0, 1]")
 	}
 
-	bash := int(popSize / threads)
+	mpi.Start()
+	defer mpi.Stop()
+
+	id := mpi.WorldRank()
+
+	bash := int(popSize / mpi.WorldSize())
 	init := id * bash
 	end := init + bash
 	if id == threads-1 {
@@ -148,8 +154,6 @@ func evaluateGen(population *[popSize]Agent, offspring *[popSize]Agent,
 			offspring[j] = population[j]
 		}
 	}
-
-	ch <- 0
 }
 
 func main() {
@@ -179,14 +183,8 @@ func main() {
 		//getBest(population[:]...).PrintAgent()
 		stats = append(stats, statitstics(population[:]...))
 
-		ch := make(chan int, threads)
-
 		for j := 0; j < threads; j++ {
-			go evaluateGen(&population, &offspring, j, 0.7, ch)
-		}
-
-		for j := 0; j < threads; j++ {
-			<-ch
+			go evaluateGen(&population, &offspring, 0.7)
 		}
 
 		population = offspring
