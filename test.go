@@ -13,7 +13,7 @@ func mpiF() {
 	fmt.Println("Inicie")
 }
 
-func main() {
+func maintest() {
 
 	for i := 0; i < 5; i++ {
 		mpiF()
