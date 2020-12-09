@@ -181,11 +181,9 @@ func main() {
 	for i < generations {
 		//fmt.Printf("Best %d: ", i)
 		//getBest(population[:]...).PrintAgent()
-		stats = append(stats, statitstics(population[:]...))
+		// stats = append(stats, statitstics(population[:]...))
 
-		for j := 0; j < threads; j++ {
-			go evaluateGen(&population, &offspring, 0.7)
-		}
+		evaluateGen(&population, &offspring, 0.7)
 
 		population = offspring
 		i++
