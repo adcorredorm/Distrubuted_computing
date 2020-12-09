@@ -15,7 +15,7 @@ func mpiF() {
 
 func main() {
 
-	for i := range 5 {
+	for i := 0; i < 5; i++ {
 		mpiF()
 	}
 
