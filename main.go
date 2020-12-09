@@ -130,16 +130,17 @@ func evaluateGen(population *[popSize]Agent, offspring *[popSize]Agent, rate flo
 	}
 
 	id := mpi.WorldRank()
+	ws := mpi.WorldSize()
 
-	bash := int(popSize / mpi.WorldSize())
+	bash := int(popSize / ws)
 	init := id * bash
 	end := init + bash
-	if id == threads-1 {
+	if id == ws-1 {
 		end = popSize
 	}
 
 	for j := init; j < end; j++ {
-		fmt.Printf("Hello from %d ind %d\n", id, j)
+		fmt.Printf("Hello from %d ind %d\n, size: %d", id, j, ws)
 		if rand.Float32() < rate {
 			fmt.Printf("Ind %d is going to cross\n", j)
 			pair := rand.Intn(popSize)
