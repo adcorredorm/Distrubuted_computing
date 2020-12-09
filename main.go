@@ -194,7 +194,7 @@ func main() {
 	// getBest(population[:]...).PrintAgent()
 	// stats = append(stats, statitstics(population[:]...))
 
-	// elapsed := time.Since(start)
+	elapsed := time.Since(start)
 
 	// fo, err := os.Create("resultsEvolution/" + strconv.Itoa(popSize) + " " +
 	// 	strconv.Itoa(generations) + " " +
