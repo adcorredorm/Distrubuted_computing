@@ -179,6 +179,8 @@ func main() {
 	mpi.Start()
 	defer mpi.Stop()
 
+	comm := mpi.NewCommunicator(nil)
+
 	i := 0
 	var offspring [popSize]Agent
 	for i < generations {
@@ -190,6 +192,7 @@ func main() {
 
 		population = offspring
 		i++
+		comm.Barrier()
 	}
 	//fmt.Printf("Best %d: ", i)
 	// getBest(population[:]...).PrintAgent()
