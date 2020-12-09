@@ -153,7 +153,7 @@ func evaluateGen(population *[popSize]Agent, offspring *[popSize]Agent, rate flo
 	}
 }
 
-func main2() {
+func main() {
 	start := time.Now()
 
 	th, err := strconv.Atoi(os.Args[1])
