@@ -184,8 +184,8 @@ func main() {
 	i := 0
 	var offspring [popSize]Agent
 	for i < generations {
-		//fmt.Printf("Best %d: ", i)
-		//getBest(population[:]...).PrintAgent()
+		fmt.Printf("Best %d: ", i)
+		getBest(population[:]...).PrintAgent()
 		// stats = append(stats, statitstics(population[:]...))
 
 		evaluateGen(&population, &offspring, 0.7)
