@@ -194,8 +194,8 @@ func main() {
 		i++
 		comm.Barrier()
 	}
-	//fmt.Printf("Best %d: ", i)
-	// getBest(population[:]...).PrintAgent()
+	fmt.Printf("Best %d: ", i)
+	getBest(population[:]...).PrintAgent()
 	// stats = append(stats, statitstics(population[:]...))
 
 	elapsed := time.Since(start)
