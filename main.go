@@ -191,24 +191,24 @@ func main() {
 		i++
 	}
 	//fmt.Printf("Best %d: ", i)
-	//getBest(population[:]...).PrintAgent()
-	stats = append(stats, statitstics(population[:]...))
+	// getBest(population[:]...).PrintAgent()
+	// stats = append(stats, statitstics(population[:]...))
 
-	elapsed := time.Since(start)
+	// elapsed := time.Since(start)
 
-	fo, err := os.Create("resultsEvolution/" + strconv.Itoa(popSize) + " " +
-		strconv.Itoa(generations) + " " +
-		strconv.Itoa(indSize) + " " +
-		strconv.Itoa(threads) + " " +
-		os.Args[4] + ".txt")
-	if err != nil {
-		panic(err)
-	}
-	defer fo.Close()
-	fo.Write([]byte("\tbest\tworst\tmean\tmedian\tstDeviation\n"))
-	for _, gen := range stats {
-		fo.Write([]byte(fmt.Sprintf("\t%f\t%f\t%f\t%f\t%f\n", gen[0], gen[1], gen[2], gen[3], gen[4])))
-	}
+	// fo, err := os.Create("resultsEvolution/" + strconv.Itoa(popSize) + " " +
+	// 	strconv.Itoa(generations) + " " +
+	// 	strconv.Itoa(indSize) + " " +
+	// 	strconv.Itoa(threads) + " " +
+	// 	os.Args[4] + ".txt")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer fo.Close()
+	// fo.Write([]byte("\tbest\tworst\tmean\tmedian\tstDeviation\n"))
+	// for _, gen := range stats {
+	// 	fo.Write([]byte(fmt.Sprintf("\t%f\t%f\t%f\t%f\t%f\n", gen[0], gen[1], gen[2], gen[3], gen[4])))
+	// }
 
 	fmt.Printf("%f\t", elapsed.Seconds())
 }
