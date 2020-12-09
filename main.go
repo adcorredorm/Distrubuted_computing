@@ -156,7 +156,7 @@ func evaluateGen(population *[popSize]Agent, offspring *[popSize]Agent, rate flo
 	}
 }
 
-func main() {
+func main2() {
 	start := time.Now()
 
 	th, err := strconv.Atoi(os.Args[1])
