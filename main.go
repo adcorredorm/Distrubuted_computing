@@ -141,7 +141,7 @@ func evaluateGen(population *[popSize]Agent, offspring *[popSize]Agent, rate flo
 	for j := init; j < end; j++ {
 		fmt.Printf("Hello from %d ind %d\n", id, j)
 		if rand.Float32() < rate {
-			fmt.Printf("Ind %d is going to cross")
+			fmt.Printf("Ind %d is going to cross\n", j)
 			pair := rand.Intn(popSize)
 			n1, n2 := Crossover(&population[j], &population[pair])
 			Mutate(&n1)
