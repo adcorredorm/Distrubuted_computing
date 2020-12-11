@@ -9,7 +9,7 @@ import (
 type Agent struct {
 	size    int
 	genome  []int
-	fitness float32
+	fitness float64
 }
 
 //RandomAgent returns a new random agent
@@ -38,7 +38,7 @@ func NewAgent(genome []int) Agent {
 }
 
 //Evaluate an Agent
-func (agent *Agent) Evaluate(function func([]int) float32) {
+func (agent *Agent) Evaluate(function func([]int) float64) {
 	agent.fitness = function(agent.genome)
 }
 

@@ -15,36 +15,137 @@ import (
 	"github.com/cpmech/gosl/mpi"
 )
 
+type agentGroup struct {
+	gen [][]int
+	fit []float64
+}
+
 var indSize int
 
-const popSize = 128
+const popSize = 8
 
 var matrix [][]float64
 var threads int
 var generations int
-var bestInd [popSize]float32
-var stats [][]float32
+var bestInd [popSize]float64
+var stats [][]float64
 
-func fitnessFunction(genome []int) float32 {
-	var rta float32 = 0.0
+var population agentGroup
+
+func fitnessFunction(genome []int) float64 {
+	var rta float64 = 0.0
 
 	for i := 0; i < len(genome); i++ {
 		if i < len(genome)-1 {
-			rta += float32(matrix[genome[i]][genome[i+1]])
+			rta += float64(matrix[genome[i]][genome[i+1]])
 		} else {
-			rta += float32(matrix[genome[i]][genome[0]])
+			rta += float64(matrix[genome[i]][genome[0]])
 		}
 	}
 	return rta
 }
 
-func initPopulation(function func([]int) float32) [popSize]Agent {
-	var population [popSize]Agent
-	for i := range population {
-		population[i] = RandomAgent(indSize)
-		population[i].Evaluate(function)
+func createRandomAgents(n int) agentGroup {
+	var agents Agent
+	inds := make([][]int, 0)
+	fit := make([]float64, 0)
+	for i := 0; i < n; i++ {
+		agents = RandomAgent(indSize)
+		agents.Evaluate(fitnessFunction)
+		inds = append(inds, agents.genome)
+		fit = append(fit, agents.fitness)
 	}
-	return population
+	return agentGroup{gen: inds, fit: fit}
+}
+
+func recvAgents(src int, bash int, ch chan agentGroup) {
+	comm := mpi.NewCommunicator(nil)
+
+	genomes := make([][]int, bash)
+	fitness := make([]float64, bash)
+	for i := 0; i < bash; i++ {
+		genomes[i] = make([]int, indSize)
+		comm.RecvI(genomes[i], src)
+		// fmt.Printf("Recieved: %v from %d\n", genomes[i], src)
+	}
+	comm.Recv(fitness, src)
+	// fmt.Printf("Recieved: %v from %d\n", fitness, src)
+
+	ch <- agentGroup{gen: genomes, fit: fitness}
+}
+
+func recvPopulation(firstAgents agentGroup, nodes int, bash int) {
+	if mpi.WorldRank() == 0 {
+		population = firstAgents
+		ch := make(chan agentGroup, nodes)
+
+		for i := 1; i < nodes; i++ {
+			go recvAgents(i, bash, ch)
+		}
+		for i := 1; i < nodes; i++ {
+			newAgents := <-ch
+			population.gen = append(population.gen, newAgents.gen...)
+			population.fit = append(population.fit, newAgents.fit...)
+		}
+	} else {
+		comm := mpi.NewCommunicator(nil)
+		population.gen = make([][]int, popSize)
+		population.fit = make([]float64, popSize)
+
+		for j := 0; j < popSize; j++ {
+			population.gen[j] = make([]int, indSize)
+			comm.RecvI(population.gen[j], 0)
+			// fmt.Printf("Recieved %v in %d\n", population.gen[j], mpi.WorldRank())
+		}
+		comm.Recv(population.fit, 0)
+		// fmt.Printf("Recieved %v in %d\n", population.fit, mpi.WorldRank())
+	}
+}
+
+func sendPopulation() {
+	comm := mpi.NewCommunicator(nil)
+
+	for i := 1; i < mpi.WorldSize(); i++ {
+		for j := 0; j < popSize; j++ {
+			// fmt.Printf("Sending %v to %d\n", population.gen[j], i)
+			comm.SendI(population.gen[j], i)
+		}
+		// fmt.Printf("Sending %v to %d\n", population.fit, i)
+		comm.Send(population.fit, i)
+	}
+}
+
+func sendAgents(agents agentGroup) {
+	comm := mpi.NewCommunicator(nil)
+	for i := 0; i < len(agents.gen); i++ {
+		// fmt.Printf("Sending %v from %d\n", agents.gen[i], mpi.WorldRank())
+		comm.SendI(agents.gen[i], 0)
+	}
+	// fmt.Printf("Sending %v from %d\n", agents.fit, mpi.WorldRank())
+	comm.Send(agents.fit, 0)
+}
+
+func initPopulation(function func([]int) float64) {
+	nodes := mpi.WorldSize()
+	bash := popSize / nodes
+	agents := createRandomAgents(bash)
+	comm := mpi.NewCommunicator(nil)
+
+	if mpi.WorldRank() == 0 {
+		recvPopulation(agents, nodes, bash)
+	} else {
+		sendAgents(agents)
+	}
+	comm.Barrier()
+	// fmt.Printf("After Barrier %d\n", mpi.WorldRank())
+	if mpi.WorldRank() == 0 {
+		sendPopulation()
+	} else {
+		recvPopulation(agentGroup{}, -1, -1)
+	}
+
+	fmt.Printf("Node %d agent 0", mpi.WorldRank())
+	Agent{size: 14, genome: population.gen[0], fitness: population.fit[0]}.PrintAgent()
 }
 
 func getBest(agents ...Agent) Agent {
@@ -57,11 +158,11 @@ func getBest(agents ...Agent) Agent {
 	return best
 }
 
-func statitstics(agents ...Agent) []float32 {
+func statitstics(agents ...Agent) []float64 {
 
-	fitnesses := make([]float32, 0, popSize)
+	fitnesses := make([]float64, 0, popSize)
 
-	var best, worst, median, mean, stdDv float32
+	var best, worst, median, mean, stdDv float64
 
 	for _, agent := range agents {
 		fitnesses = append(fitnesses, agent.fitness)
@@ -71,7 +172,7 @@ func statitstics(agents ...Agent) []float32 {
 	worst = fitnesses[popSize-1]
 	median = fitnesses[int(popSize/2)]
 
-	var total float32 = 0.0
+	var total float64 = 0.0
 	for _, fitness := range fitnesses {
 		total += fitness
 	}
@@ -84,9 +185,9 @@ func statitstics(agents ...Agent) []float32 {
 
 	total2 /= popSize
 
-	stdDv = float32(math.Sqrt(total2))
+	stdDv = float64(math.Sqrt(total2))
 
-	return []float32{best, worst, mean, median, stdDv}
+	return []float64{best, worst, mean, median, stdDv}
 }
 
 func chargeTest(fileName string) {
@@ -123,7 +224,7 @@ func chargeTest(fileName string) {
 	}
 }
 
-func evaluateGen(population *[popSize]Agent, offspring *[popSize]Agent, rate float32) {
+func evaluateGen(population *[popSize]Agent, offspring *[popSize]Agent, rate float64) {
 
 	if rate < 0 || rate > 1 {
 		panic("Crossover rate must be in [0, 1]")
@@ -142,7 +243,7 @@ func evaluateGen(population *[popSize]Agent, offspring *[popSize]Agent, rate flo
 	fmt.Printf("Hello from %d: init %d, end: %d\n", id, init, end)
 
 	for j := init; j < end; j++ {
-		if rand.Float32() < rate {
+		if rand.Float64() < rate {
 			pair := rand.Intn(popSize)
 			n1, n2 := Crossover(&population[j], &population[pair])
 			Mutate(&n1)
@@ -157,7 +258,10 @@ func evaluateGen(population *[popSize]Agent, offspring *[popSize]Agent, rate flo
 }
 
 func main() {
-	start := time.Now()
+	mpi.Start()
+	defer mpi.Stop()
+
+	// start := time.Now()
 
 	th, err := strconv.Atoi(os.Args[1])
 	if err != nil || th < 1 {
@@ -174,33 +278,28 @@ func main() {
 	chargeTest(os.Args[3])
 	rand.Seed(time.Now().UnixNano())
 
-	population := initPopulation(fitnessFunction)
+	initPopulation(fitnessFunction)
 
-	mpi.Start()
-	defer mpi.Stop()
+	// i := 0
+	// var offspring [popSize]Agent
 
-	comm := mpi.NewCommunicator(nil)
-
-	i := 0
-	var offspring [popSize]Agent
-
-	for i < generations {
-		population[0].PrintAgent()
-		// fmt.Printf("Best %d: ", i)
-		// getBest(population[:]...).PrintAgent()
-		// stats = append(stats, statitstics(population[:]...))
-
-		evaluateGen(&population, &offspring, 0.7)
-
-		population = offspring
-		i++
-		comm.Barrier()
-	}
+	// for i < generations {
+	// 	population[0].PrintAgent()
 	// fmt.Printf("Best %d: ", i)
 	// getBest(population[:]...).PrintAgent()
 	// stats = append(stats, statitstics(population[:]...))
 
-	elapsed := time.Since(start)
+	// evaluateGen(&population, &offspring, 0.7)
+
+	// population = offspring
+	// 	i++
+	// 	comm.Barrier()
+	// }
+	// fmt.Printf("Best %d: ", i)
+	// getBest(population[:]...).PrintAgent()
+	// stats = append(stats, statitstics(population[:]...))
+
+	// elapsed := time.Since(start)
 
 	// fo, err := os.Create("resultsEvolution/" + strconv.Itoa(popSize) + " " +
 	// 	strconv.Itoa(generations) + " " +
@@ -216,5 +315,5 @@ func main() {
 	// 	fo.Write([]byte(fmt.Sprintf("\t%f\t%f\t%f\t%f\t%f\n", gen[0], gen[1], gen[2], gen[3], gen[4])))
 	// }
 
-	fmt.Printf("%f\t", elapsed.Seconds())
+	// fmt.Printf("%f\t", elapsed.Seconds())
 }

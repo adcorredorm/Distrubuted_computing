@@ -6,17 +6,8 @@ import (
 	"github.com/cpmech/gosl/mpi"
 )
 
-func mpiF() {
+func maint() {
 	mpi.Start()
 	defer mpi.Stop()
-
-	fmt.Println("Inicie")
-}
-
-func maintest() {
-
-	for i := 0; i < 5; i++ {
-		mpiF()
-	}
-
+	fmt.Printf("Hello World! from %d of %d\n", mpi.WorldRank(), mpi.WorldSize())
 }
