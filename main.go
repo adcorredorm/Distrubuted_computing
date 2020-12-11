@@ -153,7 +153,7 @@ func initPopulation() {
 	agents := createRandomAgents(bash)
 	syncPopulations(agents)
 
-	Agent{size: 14, genome: population.gen[0], fitness: population.fit[0]}.PrintAgent()
+	// Agent{size: 14, genome: population.gen[0], fitness: population.fit[0]}.PrintAgent()
 }
 
 func getBest(agents ...Agent) Agent {
@@ -314,7 +314,7 @@ func main() {
 		}
 		agents := evaluateGen(0.7)
 		syncPopulations(agents)
-		Agent{size: 14, genome: population.gen[0], fitness: population.fit[0]}.PrintAgent()
+		// Agent{size: 14, genome: population.gen[0], fitness: population.fit[0]}.PrintAgent()
 		// fmt.Printf("Best %d: ", i)
 		// getBest(population[:]...).PrintAgent()
 		// stats = append(stats, statitstics(population[:]...))
