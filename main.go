@@ -146,7 +146,7 @@ func syncPopulations(agents agentGroup) {
 
 func initPopulation() {
 	if mpi.WorldRank() == 0 {
-		fmt.Printf("----- Init Population -----\n")
+		// fmt.Printf("----- Init Population -----\n")
 	}
 	nodes := mpi.WorldSize()
 	bash := popSize / nodes
@@ -310,7 +310,7 @@ func main() {
 
 	for i := 0; i < generations; i++ {
 		if mpi.WorldRank() == 0 {
-			fmt.Printf("----- Generation #%d start -----\n", i)
+			// fmt.Printf("----- Generation #%d start -----\n", i)
 		}
 		agents := evaluateGen(0.7)
 		syncPopulations(agents)
