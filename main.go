@@ -74,8 +74,10 @@ func recvAgents(src int, bash int, ch chan agentGroup) {
 	ch <- agentGroup{gen: genomes, fit: fitness}
 }
 
-func recvPopulation(firstAgents agentGroup, nodes int, bash int) {
+func recvPopulation(firstAgents agentGroup) {
 	if mpi.WorldRank() == 0 {
+		nodes := mpi.WorldSize()
+		bash := popSize / nodes
 		population = firstAgents
 		ch := make(chan agentGroup, nodes)
 
@@ -125,14 +127,10 @@ func sendAgents(agents agentGroup) {
 	comm.Send(agents.fit, 0)
 }
 
-func initPopulation(function func([]int) float64) {
-	nodes := mpi.WorldSize()
-	bash := popSize / nodes
-	agents := createRandomAgents(bash)
+func syncPopulations(agents agentGroup) {
 	comm := mpi.NewCommunicator(nil)
-
 	if mpi.WorldRank() == 0 {
-		recvPopulation(agents, nodes, bash)
+		recvPopulation(agents)
 	} else {
 		sendAgents(agents)
 	}
@@ -141,10 +139,20 @@ func initPopulation(function func([]int) float64) {
 	if mpi.WorldRank() == 0 {
 		sendPopulation()
 	} else {
-		recvPopulation(agentGroup{}, -1, -1)
+		recvPopulation(agentGroup{})
 	}
+	comm.Barrier()
+}
 
-	fmt.Printf("Node %d agent 0", mpi.WorldRank())
+func initPopulation() {
+	if mpi.WorldRank() == 0 {
+		fmt.Printf("----- Init Population -----\n")
+	}
+	nodes := mpi.WorldSize()
+	bash := popSize / nodes
+	agents := createRandomAgents(bash)
+	syncPopulations(agents)
+
 	Agent{size: 14, genome: population.gen[0], fitness: population.fit[0]}.PrintAgent()
 }
 
@@ -224,44 +232,60 @@ func chargeTest(fileName string) {
 	}
 }
 
-func evaluateGen(population *[popSize]Agent, offspring *[popSize]Agent, rate float64) {
+func evaluateAgent(j int, rate float64, ch chan agentGroup) {
+	agents := agentGroup{}
+	if rand.Float64() < rate {
+		pair := rand.Intn(popSize)
+		p1 := Agent{size: indSize, genome: population.gen[j], fitness: population.fit[j]}
+		p2 := Agent{size: indSize, genome: population.gen[pair], fitness: population.fit[pair]}
+		n1, n2 := Crossover(&p1, &p2)
+		Mutate(&n1)
+		Mutate(&n2)
+		n1.Evaluate(fitnessFunction)
+		n2.Evaluate(fitnessFunction)
+		best := getBest(p1, n1, n2)
+		agents.gen = append(agents.gen, best.genome)
+		agents.fit = append(agents.fit, best.fitness)
+	} else {
+		agents.gen = append(agents.gen, population.gen[j])
+		agents.fit = append(agents.fit, population.fit[j])
+	}
+	ch <- agents
+}
 
+func evaluateGen(rate float64) agentGroup {
 	if rate < 0 || rate > 1 {
 		panic("Crossover rate must be in [0, 1]")
 	}
 
 	id := mpi.WorldRank()
-	ws := mpi.WorldSize()
+	nodes := mpi.WorldSize()
 
-	bash := int(popSize / ws)
+	bash := popSize / nodes
 	init := id * bash
 	end := init + bash
-	if id == ws-1 {
-		end = popSize
-	}
 
-	fmt.Printf("Hello from %d: init %d, end: %d\n", id, init, end)
+	agents := agentGroup{}
+
+	ch := make(chan agentGroup, bash)
 
 	for j := init; j < end; j++ {
-		if rand.Float64() < rate {
-			pair := rand.Intn(popSize)
-			n1, n2 := Crossover(&population[j], &population[pair])
-			Mutate(&n1)
-			Mutate(&n2)
-			n1.Evaluate(fitnessFunction)
-			n2.Evaluate(fitnessFunction)
-			offspring[j] = getBest(population[j], n1, n2)
-		} else {
-			offspring[j] = population[j]
-		}
+		go evaluateAgent(j, rate, ch)
 	}
+	for j := init; j < end; j++ {
+		agent := <-ch
+		agents.gen = append(agents.gen, agent.gen...)
+		agents.fit = append(agents.fit, agent.fit...)
+	}
+
+	return agents
 }
 
 func main() {
 	mpi.Start()
 	defer mpi.Stop()
 
-	// start := time.Now()
+	start := time.Now()
 
 	th, err := strconv.Atoi(os.Args[1])
 	if err != nil || th < 1 {
@@ -277,29 +301,35 @@ func main() {
 
 	chargeTest(os.Args[3])
 	rand.Seed(time.Now().UnixNano())
+	comm := mpi.NewCommunicator(nil)
 
-	initPopulation(fitnessFunction)
+	initPopulation()
+	comm.Barrier()
 
-	// i := 0
 	// var offspring [popSize]Agent
 
-	// for i < generations {
-	// 	population[0].PrintAgent()
+	for i := 0; i < generations; i++ {
+		if mpi.WorldRank() == 0 {
+			fmt.Printf("----- Generation #%d start -----\n", i)
+		}
+		agents := evaluateGen(0.7)
+		syncPopulations(agents)
+		Agent{size: 14, genome: population.gen[0], fitness: population.fit[0]}.PrintAgent()
+		// fmt.Printf("Best %d: ", i)
+		// getBest(population[:]...).PrintAgent()
+		// stats = append(stats, statitstics(population[:]...))
+
+		// evaluateGen(&population, &offspring, 0.7)
+
+		// population = offspring
+		comm.Barrier()
+	}
+
 	// fmt.Printf("Best %d: ", i)
 	// getBest(population[:]...).PrintAgent()
 	// stats = append(stats, statitstics(population[:]...))
 
-	// evaluateGen(&population, &offspring, 0.7)
-
-	// population = offspring
-	// 	i++
-	// 	comm.Barrier()
-	// }
-	// fmt.Printf("Best %d: ", i)
-	// getBest(population[:]...).PrintAgent()
-	// stats = append(stats, statitstics(population[:]...))
-
-	// elapsed := time.Since(start)
+	elapsed := time.Since(start)
 
 	// fo, err := os.Create("resultsEvolution/" + strconv.Itoa(popSize) + " " +
 	// 	strconv.Itoa(generations) + " " +
@@ -314,6 +344,8 @@ func main() {
 	// for _, gen := range stats {
 	// 	fo.Write([]byte(fmt.Sprintf("\t%f\t%f\t%f\t%f\t%f\n", gen[0], gen[1], gen[2], gen[3], gen[4])))
 	// }
+	if mpi.WorldRank() == 0 {
+		fmt.Printf("%f\t", elapsed.Seconds())
+	}
 
-	// fmt.Printf("%f\t", elapsed.Seconds())
 }
